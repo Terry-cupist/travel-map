@@ -1,0 +1,45 @@
+name: travel-map
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: docker/db.Dockerfile
+    container_name: travel-map-db
+    environment:
+      POSTGRES_DB: travel_map
+      POSTGRES_USER: travel
+      POSTGRES_PASSWORD: travel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel -d travel_map"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  osm-loader:
+    build:
+      context: .
+      dockerfile: docker/osm-loader.Dockerfile
+    container_name: travel-map-osm-loader
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data/geo:/data:ro
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: travel_map
+      PGUSER: travel
+      PGPASSWORD: travel
+    profiles:
+      - loader
+    restart: "no"
+
+volumes:
+  postgres_data:
